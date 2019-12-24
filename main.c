@@ -331,28 +331,28 @@ double* RGBW_get(){
 	double r,g,b, w;
 	
 	//read colors
-	r = readi2cHighLow(0x10, 0x08) *100 / 96.0;	
-	g = readi2cHighLow(0x10, 0x09) *100 / 74.0;
-	b = readi2cHighLow(0x10, 0x0A) *100 / 56.0;
+	r = readi2cHighLow(0x10, 0x08);// *100 / 96.0;	
+	g = readi2cHighLow(0x10, 0x09);// *100 / 74.0;
+	b = readi2cHighLow(0x10, 0x0A);// *100 / 56.0;
 	w = readi2cHighLow(0x10, 0x0B);
 	
 	//do some math
 	double normalizedR = r;
 	double normalizedG = g;
 	double normalizedB = b;
-	normalizedR = normalizedR;
-	normalizedG = normalizedG;
-	normalizedB = normalizedB;
+	normalizedR = normalizedR/255;
+	normalizedG = normalizedG/255;
+	normalizedB = normalizedB/255;
 	int hexR, hexB, hexG;
 	hexR = normalizedR;
 	hexB = normalizedB;
 	hexG = normalizedG;
 	
 	if(printResult){
-		printf("  raw red: 0x%d\r\n",r );
-		printf("raw green: 0x%d\r\n",g );
-		printf(" raw blue:  0x%d\r\n",b );
-		printf("raw white:  0x%d\r\n",w );
+		printf("  raw red: 0x%x\r\n",r );
+		printf("raw green: 0x%x\r\n",g );
+		printf(" raw blue:  0x%x\r\n",b );
+		printf("raw white:  0x%x\r\n",w );
 		printf("RGB: %x %x %x\r\n\r\n",hexR,hexG,hexB);
 	}
 	RGBreturn[0]= hexR;
