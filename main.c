@@ -46,6 +46,7 @@
 #include "app_error.h"
 #include "nrf_drv_twi.h"
 
+
 //#define NRF_LOG_MODULE_NAME "APP"
 
 //#include "nrf_log.h"
@@ -54,7 +55,7 @@
 
  /* Number of possible TWI addresses. */
  #define TWI_ADDRESSES      127
-
+ #define PIN_IN 5
 /* TWI instance. */
 static const nrf_drv_twi_t m_twi = NRF_DRV_TWI_INSTANCE(0); //TWI instance 0
 static const nrf_drv_twi_t m_twi1 = NRF_DRV_TWI_INSTANCE(1); //TWI instance 1
@@ -520,11 +521,21 @@ void VIBRO_test(){
 	//to fix, choose another MOSFET or connect Vibro to VUSB
 }
 
-void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action){
-    LED_BT_blue();
+void bt_btn_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action){
+  LED_BT_blue();
+	nrf_delay_ms(200);
+	LED_BT_off();
+	printf("bt button pressed!\r\n");
+}
+void pwr_btn_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action){
+	LED_PWR_red();
+	nrf_delay_ms(200);
+	LED_PWR_off();
+	printf("pwr button pressed!\r\n");
 }
 void button_init_interrupt(){
-	int in_pin = 3;
+	int pwr_pin = 5;
+	int bt_pin = 3;
 	ret_code_t err_code;
 
 		//set up GPIOTE drivers
@@ -532,13 +543,18 @@ void button_init_interrupt(){
     APP_ERROR_CHECK(err_code);
 	
 	//set the pin we want to be a sense pin
-		nrf_drv_gpiote_in_config_t in_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(true);
+		nrf_drv_gpiote_in_config_t in_config = GPIOTE_CONFIG_IN_SENSE_HITOLO(true);
     in_config.pull = NRF_GPIO_PIN_PULLUP;
 
-    err_code = nrf_drv_gpiote_in_init(in_pin, &in_config, in_pin_handler);
+		//attach GPIO tasker to power button
+    err_code = nrf_drv_gpiote_in_init(pwr_pin, &in_config, pwr_btn_handler);
     APP_ERROR_CHECK(err_code);
-
-    nrf_drv_gpiote_in_event_enable(in_pin, true);
+    nrf_drv_gpiote_in_event_enable(pwr_pin, true);
+	
+		//attach GPIO event to bluetooth button
+		err_code = nrf_drv_gpiote_in_init(bt_pin, &in_config, bt_btn_handler);
+    APP_ERROR_CHECK(err_code);
+    nrf_drv_gpiote_in_event_enable(bt_pin, true);
 }
 
 int main(void){
@@ -625,13 +641,14 @@ int main(void){
 					if (err_code == NRF_SUCCESS){}
 						nrf_delay_ms(200);
 		}	*/
+		/*
 		for(int i = 1; i< 100000; i++){
 			
 			RGBW_get();
 			nrf_delay_ms(200);
-		}
+		}*/
 		
-		
+		while(true){};
 		
 		
 		
