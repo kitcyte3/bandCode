@@ -36,6 +36,7 @@
 #include "app_uart.h"
 #include "app_error.h"
 #include "nrf_delay.h"
+#include "nrf_drv_gpiote.h"
 #include "nrf.h"
 #include "bsp.h" 
 //
@@ -78,13 +79,18 @@ void uart_error_handle(app_uart_evt_t * p_event){
 }
 
 void MUX_init(){
-		nrf_gpio_cfg_output(30); //S0
-		nrf_gpio_cfg_output(0); //S1
-		nrf_gpio_cfg_output(1); //S2
-		nrf_gpio_cfg_output(2); //S3
+	nrf_gpio_cfg_output(30); //S0
+	nrf_gpio_cfg_output(0); //S1
+	nrf_gpio_cfg_output(1); //S2
+	nrf_gpio_cfg_output(2); //S3
 }
-
-
+void vibro_init(){
+	nrf_gpio_cfg_output(14);
+}
+void button_init_simple(){
+	nrf_gpio_cfg_input(3,NRF_GPIO_PIN_PULLUP);
+	nrf_gpio_cfg_input(5,NRF_GPIO_PIN_PULLUP);
+}
 void twi_init (void){
 		//make sure TWO0 and TWI1 are both enabled in config text file somewhere else in project
     ret_code_t err_code;
@@ -238,6 +244,13 @@ bool LED_BT_blue(){
 	writei2cSingle(0x23, 0x04, res); //set Blue light closer to USB on
 	return 0;
 }
+bool LED_BT_green(){
+	//make sure GPIOEXP1_init was run before this function.
+	uint8_t res = readi2cOneByte(0x23, 0x04); //read LED register
+	res = (res & ~0x38) | (0x28 & 0x38); //0banything & 0b000[fix]111
+	writei2cSingle(0x23, 0x04, res); //set Blue light closer to USB on
+	return 0;
+}
 bool LED_BT_off(){
 	//make sure GPIOEXP1_init was run before this function.
 	uint8_t res = readi2cOneByte(0x23, 0x04); //read LED register
@@ -260,6 +273,22 @@ bool LED_PWR_green(){
 	writei2cSingle(0x23, 0x04, res); //set green light away from USB on
 	return 0;
 }
+bool LED_PWR_bluegreen(){
+	//make sure GPIOEXP1_init was run before this function.
+	//see explanation in LED_BT_blue and LED_PWR_red
+	uint8_t res = readi2cOneByte(0x23, 0x04); //read LED register
+	res = (res & ~0x07) | (0x04 & 0x07);; //0banything & 0b000000[011]
+	writei2cSingle(0x23, 0x04, res); //set green light away from USB on
+	return 0;
+}
+bool LED_PWR_yellow(){
+	//make sure GPIOEXP1_init was run before this function.
+	//see explanation in LED_BT_blue and LED_PWR_red
+	uint8_t res = readi2cOneByte(0x23, 0x04); //read LED register
+	res = (res & ~0x07) | (0x01 & 0x07);; //0banything & 0b000000[011]
+	writei2cSingle(0x23, 0x04, res); //set green light away from USB on
+	return 0;
+}
 bool LED_PWR_off(){
 	//make sure GPIOEXP1_init was run before this function.
 	//see explanation in LED_BT_blue and LED_PWR_red
@@ -269,13 +298,13 @@ bool LED_PWR_off(){
 	return 0;
 }
 
-bool LED_indicator_init(){
+void LED_indicator_init(){
 		//configuration registers set all outputs to outputs instead of default input
 		writei2cSingle(0x23, 0x0C, 0x0); 
 		writei2cSingle(0x23, 0x0D, 0x0); 
 		writei2cSingle(0x23, 0x0E, 0x0); 
 }
-bool LED_vertBoard_init(){
+void LED_vertBoard_init(){
 		//configuration registers set all outputs to outputs instead of default input
 		writei2cSingle(0x22, 0x0C, 0x0); 
 		writei2cSingle(0x22, 0x0D, 0x0); 
@@ -302,6 +331,13 @@ void MUX_set(bool s3, bool s2, bool s1, bool s0){
 	s2?nrf_gpio_pin_set(1):nrf_gpio_pin_clear(1);
 	s1?nrf_gpio_pin_set(0):nrf_gpio_pin_clear(0);
 	s0?nrf_gpio_pin_set(30):nrf_gpio_pin_clear(30);
+}
+
+void vibro_start(){
+	nrf_gpio_pin_set(14);
+}
+void vibro_stop(){
+	nrf_gpio_pin_clear(14);
 }
 
 bool RGBW_on(){
@@ -391,7 +427,7 @@ uint32_t err_code;
 	printf("\r\nUART works\r\n");
 }
 
-void scan_twi(){
+void scan_twi(){ //works 12/27/2019
 	//check for TWI dvices
 	uint8_t sample_data;
 	uint8_t address;
@@ -405,6 +441,106 @@ void scan_twi(){
     }
 }
 
+void scan_twi1(){
+
+	
+	//check for TWI dvices
+	uint8_t sample_data;
+	uint8_t address;
+	uint32_t err_code;
+	for (address = 1; address <= 127; address++){
+        err_code = nrf_drv_twi_rx(&m_twi1, address, &sample_data, sizeof(sample_data));
+        if (err_code == NRF_SUCCESS)
+        {
+            printf("TWI1 device detected at address 0x%x.\r\n", address);
+        }
+    }
+}
+
+void LED_demo(){
+	LED_indicator_init();
+	LED_BT_blue();
+	LED_PWR_yellow();
+		
+	int delayTime = 300;
+	
+	hi:
+	
+	for(int i = 0; i< 4; i++){
+		LED_BT_blue();
+		LED_PWR_red();
+		nrf_delay_ms(delayTime);
+		LED_BT_off();
+		LED_PWR_off();
+		nrf_delay_ms(delayTime);
+	}
+	for(int i = 0; i< 4; i++){
+		LED_BT_blue();
+		LED_PWR_yellow();
+		nrf_delay_ms(delayTime);
+		LED_BT_off();
+		LED_PWR_off();
+		nrf_delay_ms(delayTime);
+	}
+	for(int i = 0; i< 4; i++){
+		LED_BT_blue();
+		LED_PWR_green();
+		nrf_delay_ms(delayTime);
+		LED_BT_off();
+		LED_PWR_off();
+		nrf_delay_ms(delayTime);
+	}
+	LED_PWR_green();
+	LED_BT_green();
+	nrf_delay_ms(4*delayTime);
+	LED_PWR_off();
+	LED_BT_off();
+	
+	while(true){
+		if(nrf_gpio_pin_read(3)==0){
+			goto hi;
+		}
+		if(nrf_gpio_pin_read(5) == 0){
+			goto hi;
+		}
+	}
+}
+
+void VIBRO_test(){
+	//vibro tests
+	vibro_init();
+	while(true){
+		//vibration motor test
+		vibro_start();
+		nrf_delay_ms(1000);
+		vibro_stop();
+		nrf_delay_ms(1000);
+	}
+	//vibro results V2: The voltage at the motor is 0.2V too low for the motor to run
+	//to fix, choose another MOSFET or connect Vibro to VUSB
+}
+
+void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action){
+    LED_BT_blue();
+}
+void button_init_interrupt(){
+	int in_pin = 3;
+	ret_code_t err_code;
+
+		//set up GPIOTE drivers
+    err_code = nrf_drv_gpiote_init();
+    APP_ERROR_CHECK(err_code);
+	
+	//set the pin we want to be a sense pin
+		nrf_drv_gpiote_in_config_t in_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(true);
+    in_config.pull = NRF_GPIO_PIN_PULLUP;
+
+    err_code = nrf_drv_gpiote_in_init(in_pin, &in_config, in_pin_handler);
+    APP_ERROR_CHECK(err_code);
+
+    nrf_drv_gpiote_in_event_enable(in_pin, true);
+}
+
 int main(void){
 	//These are direct NRF GPIO
 	MUX_init();						//setup nrf GPIO to output
@@ -413,26 +549,36 @@ int main(void){
 		
 	//then do twi init, since it tends to get stuck here
 	twi_init();
-	twi1_init();
+	//twi1_init();
 	
 	nrf_delay_ms(1000);
 	scan_twi(); // do a twi scan
+	//scan_twi1();
+	
+	//buttons
+	//button_init_simple();
+	button_init_interrupt(); //turns on BT light when button pressed
+	
 	
 	//indicator LED stuff on 0x23 expander
 	LED_indicator_init();
-	LED_BT_blue();
-	LED_PWR_green();
+	//LED_demo();
+	LED_PWR_yellow();
+	
+	
 
+	
 	//indicator LED stuff on 0x22 expander
 	LED_vertBoard_init();
-	writei2cSingle(0x22, 0x04, 0x77); //set Blue light closer to USB on
-	writei2cSingle(0x22, 0x05, 0x0); //set Blue light closer to USB on
-	writei2cSingle(0x22, 0x06, 0x20); //set Blue light closer to USB on
+	writei2cSingle(0x22, 0x04, 0x0);
+	writei2cSingle(0x22, 0x05, 0x0); 
+	writei2cSingle(0x22, 0x06, 0x0); 
 	
 	//RGBW setup
 	MUX_set(0,0,1,1);
 	RGBW_on();
 
+	
 
 	//===========EVERYTHING UP TO HERE WORKS==========================
 	
